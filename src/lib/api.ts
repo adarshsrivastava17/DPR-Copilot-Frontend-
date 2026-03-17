@@ -5,19 +5,24 @@ import axios from "axios";
 
 const RENDER_BACKEND = "https://dpr-copilot-backend.onrender.com";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== "undefined" && !window.location.hostname.includes("localhost")
-    ? RENDER_BACKEND
-    : "http://localhost:8000");
-
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: "http://localhost:8000",
   headers: { "Content-Type": "application/json" },
 });
 
-// Attach JWT token to all requests
+// Dynamically set baseURL at request time (not module-load time)
+// This ensures it works in both SSR and client-side contexts
 api.interceptors.request.use((config) => {
+  // Use env var if provided (build-time)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    config.baseURL = process.env.NEXT_PUBLIC_API_URL;
+  }
+  // In browser: if not on localhost, use deployed backend
+  else if (typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
+    config.baseURL = RENDER_BACKEND;
+  }
+
+  // Attach JWT token
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("dpr_token");
     if (token) {
