@@ -3,7 +3,13 @@
  */
 import axios from "axios";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const RENDER_BACKEND = "https://dpr-copilot-backend.onrender.com";
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined" && !window.location.hostname.includes("localhost")
+    ? RENDER_BACKEND
+    : "http://localhost:8000");
 
 const api = axios.create({
   baseURL: API_BASE,
