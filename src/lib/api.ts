@@ -75,8 +75,8 @@ export const documentsAPI = {
 
 // ─── Reports ─────────────────────────────────────────
 export const reportsAPI = {
-  generate: (projectId: string, customInstructions?: string, targetPages?: number) =>
-    api.post("/api/reports/generate", { project_id: projectId, custom_instructions: customInstructions, target_pages: targetPages || 30 }),
+  generate: (projectId: string, customInstructions?: string, targetPages?: number, selectedSections?: string[]) =>
+    api.post("/api/reports/generate", { project_id: projectId, custom_instructions: customInstructions, target_pages: targetPages || 30, selected_sections: selectedSections || null }),
   get: (id: string) => api.get(`/api/reports/${id}`),
   listByProject: (projectId: string) => api.get(`/api/reports/project/${projectId}`),
   updateSection: (reportId: string, sectionKey: string, content: string) =>

@@ -39,6 +39,25 @@ const SECTION_COLORS: Record<string, { bg: string; border: string; icon: string;
   conclusion:         { bg: "bg-green-50",   border: "border-green-200",   icon: "✅", gradient: "from-green-500 to-green-700" },
 };
 
+const ALL_SECTIONS = [
+  { key: "executive_summary", label: "Executive Summary", icon: "📋" },
+  { key: "promoter_profile", label: "Promoter & Company Profile", icon: "👤" },
+  { key: "industry_overview", label: "Industry & Market Analysis", icon: "🏭" },
+  { key: "product_details", label: "Product / Service Details", icon: "📦" },
+  { key: "technical_details", label: "Technical Feasibility", icon: "⚙️" },
+  { key: "project_cost", label: "Project Cost & Finance", icon: "💰" },
+  { key: "profitability", label: "Profitability & Projections", icon: "📈" },
+  { key: "swot_analysis", label: "SWOT Analysis", icon: "🎯" },
+  { key: "risk_assessment", label: "Risk Assessment", icon: "🛡️" },
+  { key: "conclusion", label: "Conclusion", icon: "✅" },
+];
+
+const SECTION_PRESETS: Record<string, string[]> = {
+  all: ALL_SECTIONS.map(s => s.key),
+  essential: ["executive_summary", "product_details", "project_cost", "profitability", "conclusion"],
+  financial: ["project_cost", "profitability", "swot_analysis", "risk_assessment"],
+};
+
 const PAGE_OPTIONS = [
   { value: 15, label: "15 pages", desc: "Brief Report" },
   { value: 25, label: "25 pages", desc: "Standard Report" },
@@ -66,6 +85,13 @@ export default function ProjectDetailPage() {
   const [exporting, setExporting] = useState<string | null>(null);
   const [targetPages, setTargetPages] = useState(30);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [selectedSections, setSelectedSections] = useState<string[]>(ALL_SECTIONS.map(s => s.key));
+
+  const toggleSectionPick = (key: string) => {
+    setSelectedSections(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -140,12 +166,16 @@ export default function ProjectDetailPage() {
   };
 
   const handleGenerate = async () => {
+    if (selectedSections.length === 0) {
+      toast.error("Please select at least one section");
+      return;
+    }
     setShowGenerateModal(false);
     setGenerating(true);
     setTab("report");
     try {
-      const { data } = await reportsAPI.generate(projectId, undefined, targetPages);
-      toast.success(`DPR generation started (${targetPages} pages)...`);
+      const { data } = await reportsAPI.generate(projectId, undefined, targetPages, selectedSections);
+      toast.success(`DPR generation started (${targetPages} pages, ${selectedSections.length} sections)...`);
       setActiveReport({ id: data.report_id, status: "generating", sections: null });
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "Generation failed");
@@ -260,12 +290,48 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-gray-700">Sections to Include</label>
+                <div className="flex gap-1">
+                  <button onClick={() => setSelectedSections(SECTION_PRESETS.all)}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition ${selectedSections.length === ALL_SECTIONS.length ? 'bg-navy-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>All</button>
+                  <button onClick={() => setSelectedSections(SECTION_PRESETS.essential)}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition ${JSON.stringify(selectedSections.sort()) === JSON.stringify([...SECTION_PRESETS.essential].sort()) ? 'bg-navy-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Essential</button>
+                  <button onClick={() => setSelectedSections(SECTION_PRESETS.financial)}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition ${JSON.stringify(selectedSections.sort()) === JSON.stringify([...SECTION_PRESETS.financial].sort()) ? 'bg-navy-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Financial</button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+                {ALL_SECTIONS.map((sec) => (
+                  <button
+                    key={sec.key}
+                    onClick={() => toggleSectionPick(sec.key)}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-left text-sm transition-all ${
+                      selectedSections.includes(sec.key)
+                        ? 'border-navy-400 bg-navy-50 shadow-sm'
+                        : 'border-gray-200 hover:border-gray-300 opacity-60'
+                    }`}
+                  >
+                    <span className={`w-5 h-5 rounded flex items-center justify-center text-xs border ${
+                      selectedSections.includes(sec.key)
+                        ? 'bg-navy-500 border-navy-500 text-white' : 'border-gray-300'
+                    }`}>
+                      {selectedSections.includes(sec.key) && '✓'}
+                    </span>
+                    <span className="text-sm">{sec.icon}</span>
+                    <span className={`text-xs font-medium ${selectedSections.includes(sec.key) ? 'text-navy-700' : 'text-gray-500'}`}>{sec.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-gradient-to-r from-navy-50 to-teal-50 rounded-xl p-4 mb-6 border border-navy-100">
               <div className="flex items-center gap-3">
                 <FileSpreadsheet className="w-5 h-5 text-navy-500" />
                 <div>
                   <p className="text-sm font-semibold text-navy-700">
-                    {targetPages} pages • {Math.ceil(targetPages * 300)} words
+                    {targetPages} pages • {selectedSections.length} sections • {Math.ceil(targetPages * 300)} words
                   </p>
                   <p className="text-xs text-gray-500">
                     10 professional sections with tables, charts & analysis
