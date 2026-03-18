@@ -42,6 +42,12 @@ export default function NewProjectPage() {
       capacity: "",
       machinery_cost: "",
       working_capital: "",
+      contact_phone: "",
+      contact_email: "",
+      contact_address: "",
+      contact_website: "",
+      contact_gst: "",
+      contact_pan: "",
     },
   });
 
@@ -185,7 +191,19 @@ export default function NewProjectPage() {
           </div>
         </div>
 
-        {/* ─── Submit ─────────────────────────────────── */}
+        {/* ─── Contact Details ─────────────────────────── */}
+        <div className="glass-card rounded-2xl p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Contact Details</h2>
+          <p className="text-sm text-gray-500 mb-4">These details will appear in the Contact section of your DPR.</p>
+          <div className="grid md:grid-cols-2 gap-4">
+            {inputField("Phone / Mobile", "contact_phone", "e.g., +91 9876543210")}
+            {inputField("Email", "contact_email", "e.g., info@business.com")}
+            {inputField("Registered Address", "contact_address", "Full business address")}
+            {inputField("Website", "contact_website", "e.g., www.business.com")}
+            {inputField("GST Number", "contact_gst", "e.g., 22AAAAA0000A1Z5")}
+            {inputField("PAN Number", "contact_pan", "e.g., AAAAA0000A")}
+          </div>
+        </div>
         <div className="flex gap-4">
           <button
             type="submit"
