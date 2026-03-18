@@ -13,6 +13,21 @@ import {
 import { projectsAPI, documentsAPI, reportsAPI, exportAPI, ingestionAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 
+// Canonical section order — this controls display order everywhere
+const SECTION_ORDER = [
+  "executive_summary",
+  "promoter_profile",
+  "industry_overview",
+  "product_details",
+  "technical_details",
+  "project_cost",
+  "profitability",
+  "swot_analysis",
+  "risk_assessment",
+  "contact_details",
+  "conclusion",
+];
+
 const SECTION_NAMES: Record<string, string> = {
   executive_summary: "Executive Summary",
   promoter_profile: "Promoter & Company Profile",
@@ -23,6 +38,7 @@ const SECTION_NAMES: Record<string, string> = {
   profitability: "Profitability & Financial Projections",
   swot_analysis: "SWOT Analysis",
   risk_assessment: "Risk Assessment & Mitigation",
+  contact_details: "Contact Details",
   conclusion: "Conclusion & Recommendations",
 };
 
@@ -36,6 +52,7 @@ const SECTION_COLORS: Record<string, { bg: string; border: string; icon: string;
   profitability:      { bg: "bg-emerald-50", border: "border-emerald-200", icon: "📈", gradient: "from-emerald-500 to-emerald-700" },
   swot_analysis:      { bg: "bg-orange-50",  border: "border-orange-200",  icon: "🎯", gradient: "from-orange-500 to-orange-700" },
   risk_assessment:    { bg: "bg-red-50",     border: "border-red-200",     icon: "🛡️", gradient: "from-red-500 to-red-700" },
+  contact_details:    { bg: "bg-violet-50",  border: "border-violet-200",  icon: "📞", gradient: "from-violet-500 to-violet-700" },
   conclusion:         { bg: "bg-green-50",   border: "border-green-200",   icon: "✅", gradient: "from-green-500 to-green-700" },
 };
 
@@ -49,13 +66,14 @@ const ALL_SECTIONS = [
   { key: "profitability", label: "Profitability & Projections", icon: "📈" },
   { key: "swot_analysis", label: "SWOT Analysis", icon: "🎯" },
   { key: "risk_assessment", label: "Risk Assessment", icon: "🛡️" },
+  { key: "contact_details", label: "Contact Details", icon: "📞" },
   { key: "conclusion", label: "Conclusion", icon: "✅" },
 ];
 
 const SECTION_PRESETS: Record<string, string[]> = {
   all: ALL_SECTIONS.map(s => s.key),
-  essential: ["executive_summary", "product_details", "project_cost", "profitability", "conclusion"],
-  financial: ["project_cost", "profitability", "swot_analysis", "risk_assessment"],
+  essential: ["executive_summary", "promoter_profile", "product_details", "project_cost", "profitability", "contact_details", "conclusion"],
+  financial: ["executive_summary", "project_cost", "profitability", "swot_analysis", "risk_assessment", "conclusion"],
 };
 
 const PAGE_OPTIONS = [
@@ -86,6 +104,7 @@ export default function ProjectDetailPage() {
   const [targetPages, setTargetPages] = useState(30);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedSections, setSelectedSections] = useState<string[]>(ALL_SECTIONS.map(s => s.key));
+  const [customSectionsText, setCustomSectionsText] = useState("");
 
   const toggleSectionPick = (key: string) => {
     setSelectedSections(prev =>
@@ -166,7 +185,30 @@ export default function ProjectDetailPage() {
   };
 
   const handleGenerate = async () => {
-    if (selectedSections.length === 0) {
+    // If user typed custom sections, parse them; otherwise use checkbox selection
+    let sectionsToUse = selectedSections;
+    if (customSectionsText.trim()) {
+      const typed = customSectionsText.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+      const matched: string[] = [];
+      for (const t of typed) {
+        // Match by key name or by display name
+        const byKey = SECTION_ORDER.find(k => k === t.replace(/\s+/g, "_"));
+        if (byKey) { matched.push(byKey); continue; }
+        const byName = Object.entries(SECTION_NAMES).find(([, name]) => name.toLowerCase().includes(t));
+        if (byName) { matched.push(byName[0]); continue; }
+        // Partial match
+        const partial = SECTION_ORDER.find(k => k.includes(t.replace(/\s+/g, "_")) || SECTION_NAMES[k]?.toLowerCase().includes(t));
+        if (partial) matched.push(partial);
+      }
+      if (matched.length > 0) {
+        // Deduplicate and sort by canonical order
+        sectionsToUse = Array.from(new Set(matched)).sort((a, b) => SECTION_ORDER.indexOf(a) - SECTION_ORDER.indexOf(b));
+      } else {
+        toast.error("Could not match any typed sections. Please use proper section names.");
+        return;
+      }
+    }
+    if (sectionsToUse.length === 0) {
       toast.error("Please select at least one section");
       return;
     }
@@ -174,8 +216,8 @@ export default function ProjectDetailPage() {
     setGenerating(true);
     setTab("report");
     try {
-      const { data } = await reportsAPI.generate(projectId, undefined, targetPages, selectedSections);
-      toast.success(`DPR generation started (${targetPages} pages, ${selectedSections.length} sections)...`);
+      const { data } = await reportsAPI.generate(projectId, undefined, targetPages, sectionsToUse);
+      toast.success(`DPR generation started (${targetPages} pages, ${sectionsToUse.length} sections)...`);
       setActiveReport({ id: data.report_id, status: "generating", sections: null });
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "Generation failed");
@@ -252,7 +294,14 @@ export default function ProjectDetailPage() {
   }
 
   if (!project) return <div className="text-center p-20 text-gray-500">Project not found</div>;
-  const reportSections = activeReport?.sections ? Object.entries(activeReport.sections) : [];
+  // Sort sections by canonical SECTION_ORDER so they always display in the correct sequence
+  const reportSections = activeReport?.sections
+    ? Object.entries(activeReport.sections).sort(([a], [b]) => {
+        const ia = SECTION_ORDER.indexOf(a);
+        const ib = SECTION_ORDER.indexOf(b);
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      })
+    : [];
 
   return (
     <div className="animate-fade-in">
@@ -323,6 +372,17 @@ export default function ProjectDetailPage() {
                     <span className={`text-xs font-medium ${selectedSections.includes(sec.key) ? 'text-navy-700' : 'text-gray-500'}`}>{sec.label}</span>
                   </button>
                 ))}
+              </div>
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Or type your own sections (comma-separated)</label>
+                <input
+                  type="text"
+                  value={customSectionsText}
+                  onChange={(e) => setCustomSectionsText(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-navy-500/20 focus:border-navy-500 outline-none text-sm"
+                  placeholder="e.g., Executive Summary, Project Cost, Conclusion"
+                />
+                <p className="text-xs text-gray-400 mt-1">Leave empty to use checkbox selection above</p>
               </div>
             </div>
 
