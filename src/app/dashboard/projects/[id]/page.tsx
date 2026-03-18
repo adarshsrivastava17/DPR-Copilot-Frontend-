@@ -708,12 +708,11 @@ export default function ProjectDetailPage() {
                                   h4: ({ children }) => <h4 className="text-base font-semibold text-gray-700 mt-4 mb-2">{children}</h4>,
                                   p: ({ children }) => <p className="text-gray-600 leading-relaxed mb-4 text-[15px]">{children}</p>,
                                   strong: ({ children }) => <strong className="text-gray-900 font-semibold">{children}</strong>,
-                                  ul: ({ children }) => <ul className="space-y-2 mb-4 ml-1">{children}</ul>,
-                                  ol: ({ children }) => <ol className="space-y-2 mb-4 ml-1 list-decimal list-inside">{children}</ol>,
+                                  ul: ({ children }) => <ul className="flex flex-col space-y-2 mb-4 ml-4 list-none">{children}</ul>,
+                                  ol: ({ children }) => <ol className="flex flex-col space-y-2 mb-4 ml-4 list-decimal list-inside">{children}</ol>,
                                   li: ({ children }) => (
-                                    <li className="flex items-start gap-2 text-gray-600 text-[15px]">
-                                      <span className="text-navy-400 mt-1.5 flex-shrink-0">•</span>
-                                      <span>{children}</span>
+                                    <li className="block text-gray-600 text-[15px] pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-navy-400 before:font-bold">
+                                      {children}
                                     </li>
                                   ),
                                   table: ({ children }) => (
