@@ -171,16 +171,27 @@ export default function ProjectDetailPage() {
   }, [generating, activeReport?.id]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     setUploading(true);
+    let successCount = 0;
+    let failCount = 0;
     try {
-      const { data } = await documentsAPI.upload(projectId, file);
-      toast.success(`Uploaded: ${file.name}`);
-      try { await ingestionAPI.parseDocument(data.id); } catch {}
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || "Upload failed");
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          const { data } = await documentsAPI.upload(projectId, file);
+          successCount++;
+          try { await ingestionAPI.parseDocument(data.id); } catch {}
+        } catch (err: any) {
+          failCount++;
+          toast.error(`Failed: ${file.name} — ${err.response?.data?.detail || "Upload error"}`);
+        }
+      }
+      if (successCount > 0) {
+        toast.success(`Uploaded ${successCount} file${successCount > 1 ? "s" : ""} successfully`);
+        fetchData();
+      }
     } finally { setUploading(false); e.target.value = ""; }
   };
 
@@ -555,12 +566,12 @@ export default function ProjectDetailPage() {
                 {uploading ? <Loader2 className="w-8 h-8 text-teal-500 animate-spin mx-auto" /> : (
                   <>
                     <Upload className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 font-medium">Click to upload documents</p>
-                    <p className="text-xs text-gray-400 mt-1">PDF, DOCX, or XLSX — max 10MB</p>
+                    <p className="text-sm text-gray-600 font-medium">Click to upload documents (select multiple files)</p>
+                    <p className="text-xs text-gray-400 mt-1">PDF, DOCX, or XLSX — select one or more files at once</p>
                   </>
                 )}
               </div>
-              <input type="file" className="hidden" accept=".pdf,.docx,.xlsx" onChange={handleUpload} disabled={uploading} />
+              <input type="file" className="hidden" accept=".pdf,.docx,.xlsx" multiple onChange={handleUpload} disabled={uploading} />
             </label>
           </div>
           {documents.length > 0 && (
